@@ -7,6 +7,7 @@ Parameters:
   EnvironmentName:
     Description: An environment name that is prefixed to resource names
     Type: String
+    Default: bg-sample
   VpcCIDR:
     Description: Please enter the IP range (CIDR notation) for this VPC
     Type: String
@@ -51,21 +52,12 @@ Parameters:
     Type: String
     Default: t3.micro
     ConstraintDescription: must be a valid EC2 instance type.
-  CodeArtifactBucket:
+  ArtifactBucket:
     Type: String
     Description: The name of the s3 bucket you created during pre-requisites
   RepositoryBranch:
     Type: String
     Default: main
-  TagKey:
-    Type: String
-    Default: Name  
-  MyDeploymentGroup:
-    Type: String
-    Default: 'my-sample-bg-deployment-group'
-  CodeDeployAppName:
-    Type: String
-    Default: 'my-sample-bg-application'  
       
 Resources:
   VPC:
@@ -482,8 +474,8 @@ Resources:
       Code:
         BranchName: main
         S3:
-          Bucket: !Ref CodeArtifactBucket
-          Key: 'bgdemo.zip'
+          Bucket: !Ref ArtifactBucket
+          Key: 'sample-application.zip'
   BasicParameter:
     Type: AWS::SSM::Parameter
     Properties:
@@ -494,13 +486,11 @@ Resources:
       
   MyApplication:
     Type: 'AWS::CodeDeploy::Application'
-    Properties:
-      ApplicationName: !Ref CodeDeployAppName
 
-  CodeArtifactBucketPolicy:
+  ArtifactBucketPolicy:
     Type: 'AWS::S3::BucketPolicy'
     Properties:
-      Bucket: !Ref CodeArtifactBucket
+      Bucket: !Ref ArtifactBucket
       PolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -511,7 +501,7 @@ Resources:
             Resource: !Join 
               - ''
               - - 'arn:aws:s3:::'
-                - !Ref CodeArtifactBucket
+                - !Ref ArtifactBucket
                 - /*
             Condition:
               StringNotEquals:
@@ -523,7 +513,7 @@ Resources:
             Resource: !Join 
               - ''
               - - 'arn:aws:s3:::'
-                - !Ref CodeArtifactBucket
+                - !Ref ArtifactBucket
                 - /*
             Condition:
               Bool:
@@ -536,7 +526,7 @@ Resources:
     Properties:
       RoleArn: !GetAtt CustomServiceRole.Arn
       ArtifactStore:
-        Location: !Ref CodeArtifactBucket
+        Location: !Ref ArtifactBucket
         Type: S3
       Stages:
         - Name: Source
@@ -581,7 +571,7 @@ Resources:
                 - Name: MyAppBuild
               Configuration:
                 ApplicationName: !Ref MyApplication
-                DeploymentGroupName: !Ref MyDeploymentGroup
+                DeploymentGroupName: 'my-sample-bg-deployment-group'
               RunOrder: 1
         - Name: Lambda
           Actions:
@@ -619,7 +609,7 @@ Resources:
       Artifacts:
           ArtifactIdentifier: String
           EncryptionDisabled: false
-          Location: !Ref CodeArtifactBucket
+          Location: !Ref ArtifactBucket
           Name: "MyBuildArtifact"
           NamespaceType: NONE
           OverrideArtifactName: false
@@ -670,7 +660,7 @@ Resources:
             ServiceToken: !GetAtt Function.Arn
             serviceroleARN: !GetAtt CustomServiceRole.Arn
             ApplicationName: !Ref MyApplication
-            DeploymentGroupName: !Ref MyDeploymentGroup
+            DeploymentGroupName: 'my-sample-bg-deployment-group'
             AutoScalingGroupName: !Ref WebServerGroup
             TargetGroupName: !GetAtt ALBTargetGroup.TargetGroupName 
             
