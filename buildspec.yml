@@ -13,7 +13,7 @@ phases:
       - if [[ "$current_deployment" == "green" ]]; then dir='/efs/blue' ; else dir='/efs/green' ; fi
       - if [ ! -d $dir ]; then  mkdir $dir >/dev/null 2>&1 ; fi
       - echo $dir
-      - rsync -ar --delete $CODEBUILD_SRC_DIR/ $dir/
+      - rsync -ar $CODEBUILD_SRC_DIR/ $dir/
 artifacts:
   files:
       - '**/*'
