@@ -10,14 +10,12 @@ DEPLOYMENT_TYPE=$(aws deploy get-deployment --deployment-id "$DEPLOYMENT_ID" --r
 
 function deploy_to_green {
 echo `date -u` ":deploying to green" >> /tmp/deploylog.txt
-echo `date -u` ":deleting temp dir" >> /tmp/deploylog.txt
-rm -rf /var/temp/* 
+## here you can mention any commands you need to run for your application during the deployment
 }
 
 function deploy_to_blue {
 echo `date -u` ":deploying to BLUE" >> /tmp/deploylog.txt
-echo `date -u` ":deleting temp dir" >> /tmp/deploylog.txt
-rm -rf /var/temp/*
+## here you can mention any commands you need to run for your application during the deployment
 }
 
 if [ "$DEPLOYMENT_TYPE" == "IN_PLACE" ]; then
