@@ -1,8 +1,7 @@
 Description: >-
   This template deploys a VPC, with a pair of public and private subnets spread
   across two Availability Zones. It deploys an internet gateway, with a default
-  route on the public subnets. It deploys a pair of NAT gateways (one in each
-  AZ), and default routes for them in the private subnets.
+  route on the public subnets. It deploys a NAT gateways and default routes for them in the private subnets.
 Parameters:
   EnvironmentName:
     Description: An environment name that is prefixed to resource names
@@ -55,9 +54,6 @@ Parameters:
   ArtifactBucket:
     Type: String
     Description: The name of the s3 bucket you created during pre-requisites
-  RepositoryBranch:
-    Type: String
-    Default: main
       
 Resources:
   VPC:
@@ -200,12 +196,6 @@ Resources:
     Properties:
       RouteTableId: !Ref PrivateRouteTable2
       SubnetId: !Ref PrivateSubnet2
-  NoIngressSecurityGroup:
-    Type: 'AWS::EC2::SecurityGroup'
-    Properties:
-      GroupName: no-ingress-sg
-      GroupDescription: Security group with no ingress rule
-      VpcId: !Ref VPC
   ApplicationLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
@@ -243,6 +233,9 @@ Resources:
         Value: lb_cookie
       - Key: stickiness.lb_cookie.duration_seconds
         Value: '30'
+      - Key: deregistration_delay.timeout_seconds
+        Value: '30'  
+        
   WebServerGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     #DeletionPolicy: Retain
@@ -251,10 +244,17 @@ Resources:
       - MountTarget1
       - MountTarget2
     Properties:
-      AutoScalingGroupName: my-sample-bg-deployment
+      #AutoScalingGroupName: my-sample-bg-deployment
       VPCZoneIdentifier:
         - Ref: PrivateSubnet1
         - Ref: PrivateSubnet2
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+          PropagateAtLaunch: "true"
+        - Key: Stack-Name
+          Value: !Sub ${AWS::StackName}
+          PropagateAtLaunch: "false"          
       LaunchConfigurationName:
         Ref: LaunchConfig
       MinSize: '1'
@@ -265,7 +265,7 @@ Resources:
       - Ref: ALBTargetGroup
     CreationPolicy:
       ResourceSignal:
-        Timeout: PT10M
+        Timeout: PT15M
         Count:
           Ref: WebServerCapacity
     UpdatePolicy:
@@ -273,7 +273,7 @@ Resources:
         MinInstancesInService: '1'
         MaxBatchSize: '1'
         PauseTime: PT15M
-        WaitOnResourceSignals: 'true'
+        WaitOnResourceSignals: 'true'   
   LaunchConfig:
     Type: AWS::AutoScaling::LaunchConfiguration
     #DeletionPolicy: Retain
@@ -541,7 +541,7 @@ Resources:
               OutputArtifacts:
                 - Name: MyApp
               Configuration:
-                BranchName: !Ref RepositoryBranch
+                BranchName: 'main'
                 RepositoryName: !Ref 'AWS::StackName'
               RunOrder: 1
         - Name: Build
@@ -655,6 +655,7 @@ Resources:
             - !Ref 'AWS::StackName'
   CreateDeploymentGroup:
         Type: Custom::CreateDeploymentGroup
+        UpdateReplacePolicy : Retain
         DependsOn: MyApplication
         Properties:
             ServiceToken: !GetAtt Function.Arn
@@ -694,15 +695,28 @@ Resources:
                   elif event['RequestType'] == 'Update':
                       print("Recieved Update Event...")
                       deployment_groups_names = codedeploy.list_deployment_groups(applicationName=app_name)
+                      old_asg_group_name = event['OldResourceProperties']['AutoScalingGroupName']
                       cur_deployment_group_name = deployment_groups_names['deploymentGroups'][0]
                       response = update_action(app_name, cur_deployment_group_name, deployment_group_name, codedeployserviceRole_ARN, asg_group_name, target_group_name)
                       sendResponse(event, context, 'hello', 'SUCCESS', response)
+                      if old_asg_group_name != asg_group_name:
+                        print("deleting old ASG")
+                        asg.delete_auto_scaling_group(AutoScalingGroupName=old_asg_group_name,ForceDelete=True)
                   elif event['RequestType'] == 'Delete':
                       print("Recieved Delete Event...")
-                      deployment_group_detail = codedeploy.get_deployment_group(applicationName=app_name,deploymentGroupName=deployment_group_name)
-                      asgname = deployment_group_detail['deploymentGroupInfo']['autoScalingGroups'][0]['name']
-                      print("Deleting Auto Scaling Group")
-                      asg_name = asg.delete_auto_scaling_group(AutoScalingGroupName=asgname,ForceDelete=True)
+                      try:
+                        deployment_group_detail = codedeploy.get_deployment_group(applicationName=app_name,deploymentGroupName=deployment_group_name)
+                        list_deploy_detail = codedeploy.list_deployments(applicationName=app_name,deploymentGroupName=deployment_group_name,includeOnlyStatuses=['Failed','Succeeded','Stopped'])
+                        i = 0
+                        for deployments in list_deploy_detail:
+                          depid = list_deploy_detail['deployments'][i]
+                          deploy_detail = codedeploy.get_deployment(deploymentId=depid)
+                          asgname = deploy_detail['deploymentInfo']['targetInstances']['autoScalingGroups'][0]
+                          print("Deleting Auto Scaling Group")
+                          asg.delete_auto_scaling_group(AutoScalingGroupName=asgname,ForceDelete=True)  
+                          i +=1     
+                      except IndexError:
+                          print("nothing to delete")                         
                       deployment_group_id = deployment_group_detail['deploymentGroupInfo']['deploymentGroupId']
                       response = delete_action(app_name, deployment_group_name)
                       sendResponse(event, context, deployment_group_id , "SUCCESS", response)
@@ -716,7 +730,11 @@ Resources:
                           main(event,context)
                           attempts += 1
                   elif e.response['Error']['Code'] == 'DeploymentGroupDoesNotExistException':	
-                      sendResponse(event,context,'success',"SUCCESS",e.response)	  
+                      sendResponse(event,context,'success',"SUCCESS",e.response)
+                  elif e.response['Error']['Code'] == 'ValidationError':	
+                      sendResponse(event,context,'success',"SUCCESS",e.response)
+                  elif e.response['Error']['Code'] == 'ResourceInUse':	
+                      sendResponse(event,context,'success',"SUCCESS",e.response)                      
                   else:
                       print("printing error")
                       sendResponse(event,context,'failed',"FAILED",e.response)
@@ -820,13 +838,15 @@ Resources:
             codepipeline = boto3.client("codepipeline")
             job_id = event["CodePipeline.job"]["id"]
             try:
-                print("Doing cool stuff!")
+                print("Checking current EFS directory name!")
                 parameter = ssm.get_parameter(Name="deployment", WithDecryption=False)
                 current_deployment = parameter["Parameter"]["Value"]
                 print(current_deployment)
                 if (parameter["Parameter"]["Value"]) == "green":
                     ssm.put_parameter(Name="deployment", Value="blue", Type="String", Overwrite=True)
                 elif (parameter["Parameter"]["Value"]) == "blue":
+                    ssm.put_parameter(Name="deployment", Value="green", Type="String", Overwrite=True)
+                else:
                     ssm.put_parameter(Name="deployment", Value="green", Type="String", Overwrite=True)
                 response = codepipeline.put_job_success_result(jobId=job_id)
                 print(response)
@@ -846,25 +866,9 @@ Outputs:
     Value: !Ref VPC
     Export:
       Name: !Sub '${AWS::StackName}-VPC'   
-  PublicSubnet1:
-    Description: A reference to the public subnet in the 1st Availability Zone
-    Value: !Ref PublicSubnet1
-  PublicSubnet2:
-    Description: A reference to the public subnet in the 2nd Availability Zone
-    Value: !Ref PublicSubnet2
-  PrivateSubnet1:
-    Description: A reference to the private subnet in the 1st Availability Zone
-    Value: !Ref PrivateSubnet1
-    Export:
-      Name: !Sub '${AWS::StackName}-privatesubnet1'
-  PrivateSubnet2:
-    Description: A reference to the private subnet in the 2nd Availability Zone
-    Value: !Ref PrivateSubnet2
-    Export:
-      Name: !Sub '${AWS::StackName}-privatesubnet2'
      
   WebsiteURL:
-    Description: URL for newly created LAMP stack
+    Description: URL for newly created Website
     Value:
       Fn::Join:
       - ''
@@ -872,20 +876,11 @@ Outputs:
         - Fn::GetAtt:
           - ApplicationLoadBalancer
           - DNSName
-  CodeBuildURL:
-    Description: CodeBuild URL
-    Value: !Join 
-      - ''
-      - - 'https://console.aws.amazon.com/codebuild/home?region='
-        - !Ref 'AWS::Region'
-        - '#/projects/'
-        - !Ref BGCodeBuildProject
-        - /view
   CodeCommitURL:
     Description: CodeCommit URL
     Value: !Join 
       - ''
-      - - 'https://console.aws.amazon.com/codepipeline/home?region='
+      - - 'https://console.aws.amazon.com/codecommit/home?region='
         - !Ref 'AWS::Region'
         - '#/repository/'
         - !Ref 'AWS::StackName'

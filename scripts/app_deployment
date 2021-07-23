@@ -10,14 +10,12 @@ DEPLOYMENT_TYPE=$(aws deploy get-deployment --deployment-id "$DEPLOYMENT_ID" --r
 
 function deploy_to_green {
 echo `date -u` ":deploying to green" >> /tmp/deploylog.txt
-#rsync -ar --delete /var/temp/ /efs/green/
 echo `date -u` ":deleting temp dir" >> /tmp/deploylog.txt
 rm -rf /var/temp/* 
 }
 
 function deploy_to_blue {
 echo `date -u` ":deploying to BLUE" >> /tmp/deploylog.txt
-#rsync -ar --delete /var/temp/ /efs/blue/
 echo `date -u` ":deleting temp dir" >> /tmp/deploylog.txt
 rm -rf /var/temp/*
 }
@@ -27,7 +25,7 @@ if [ "$DEPLOYMENT_TYPE" == "IN_PLACE" ]; then
 else
  if [ "$CURRENT_DEPLOYMENT" == "green" ];then
 	 deploy_to_blue
- elif [ "$CURRENT_DEPLOYMENT" == "blue" ];then
+ elif [ "$CURRENT_DEPLOYMENT" == "blue" ] || [ "$CURRENT_DEPLOYMENT" == "null" ];then
 	 deploy_to_green
  else
   echo `date -u` ":nothing to deploy" >> /tmp/deploylog.txt

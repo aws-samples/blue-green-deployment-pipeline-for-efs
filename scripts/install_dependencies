@@ -27,7 +27,7 @@ else
       echo `date -u` ":creating symlink for BLUE deployment" >> /tmp/deploylog.txt
       ln -s /efs/blue /var/www/html
 	  configure_httpd
-	elif [ "$CURRENT_DEPLOYMENT" == "blue" ]; then
+	elif [ "$CURRENT_DEPLOYMENT" == "blue" ] || [ "$CURRENT_DEPLOYMENT" == "null" ]; then
 	  echo `date -u` ":creating symlink for GREEN deployment" >> /tmp/deploylog.txt
       ln -s /efs/green /var/www/html
 	  configure_httpd

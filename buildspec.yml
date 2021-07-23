@@ -9,7 +9,7 @@ phases:
       - echo $current_deployment
       - echo $SSM_PARAMETER
       - echo $EFS_ID $REGION
-      - if [[ "$current_deployment" == "null" ]]; then echo "this is the first GREEN deployment for this project" ; dir='/efs/green' ; aws ssm put-parameter --name $SSM_PARAMETER --value "blue" --overwrite --region $REGION ; fi
+      - if [[ "$current_deployment" == "null" ]]; then echo "this is the first GREEN deployment for this project" ; dir='/efs/green' ; fi
       - if [[ "$current_deployment" == "green" ]]; then dir='/efs/blue' ; else dir='/efs/green' ; fi
       - if [ ! -d $dir ]; then  mkdir $dir >/dev/null 2>&1 ; fi
       - echo $dir

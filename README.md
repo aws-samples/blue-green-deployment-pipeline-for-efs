@@ -1,11 +1,6 @@
-## My Project
+## Automating domain join and unjoin process for EC2 Instances with no internet access
 
-TODO: Fill this README out!
-
-Be sure to:
-
-* Change the title in this README
-* Edit your repository description on GitHub
+This Repo contains AWS Cloudformation template and required scripts to configure a fully automated CI/CD pipeline for performing a Blue/Green deployment on EC2 Instances using Amazon EFS to host source code.
 
 ## Security
 
