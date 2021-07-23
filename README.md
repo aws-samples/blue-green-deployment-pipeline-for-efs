@@ -1,4 +1,4 @@
-## Automating domain join and unjoin process for EC2 Instances with no internet access
+## Blue/Green deployment with AWS Developer tools on Amazon EC2 using Amazon EFS to host application source code
 
 This Repo contains AWS Cloudformation template and required scripts to configure a fully automated CI/CD pipeline for performing a Blue/Green deployment on EC2 Instances using Amazon EFS to host source code.
 
