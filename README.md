@@ -2,7 +2,7 @@
 
 This Repo contains AWS Cloudformation template and required scripts to configure a fully automated CI/CD pipeline for performing a fully automated Blue/Green deployment on EC2 Instances using Amazon EFS to host source code.
 
-In this blog post, you learn how to set up a complete CI/CD pipeline for conducting a blue/green deployment on EC2 instances utilizing Amazon EFS file share as mount point to host application source code. The EFS share will be the central location hosting your application content, and it will help reduce your overall deployment time by eliminating the need for deploying a new revision on every EC2 instance local storage. It also helps to preserve any dynamically generated content when the life of an EC2 instance ends.
+This sample solution sets up a complete CI/CD pipeline for conducting a blue/green deployment on EC2 instances utilizing Amazon EFS file share as mount point to host application source code. The EFS share will be the central location hosting your application content, and it will help reduce your overall deployment time by eliminating the need for deploying a new revision on every EC2 instance local storage. It also helps to preserve any dynamically generated content when the life of an EC2 instance ends.
 
 ## Prerequisites
 
