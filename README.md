@@ -4,6 +4,22 @@ This Repo contains AWS Cloudformation template and required scripts to configure
 
 This sample solution sets up a complete CI/CD pipeline for conducting a blue/green deployment on EC2 instances utilizing Amazon EFS file share as mount point to host application source code. The EFS share will be the central location hosting your application content, and it will help reduce your overall deployment time by eliminating the need for deploying a new revision on every EC2 instance local storage. It also helps to preserve any dynamically generated content when the life of an EC2 instance ends.
 
+## How this solution works
+
+Figure below illustrates our solution architecture.
+
+![Solution Architecture](scripts/EFS-deployment.jpg)
+
+The event flow is as follows:
+
+- A developer commits code changes from their local repo to the CodeCommit repository. The commit triggers CodePipeline execution.
+- CodeBuild execution begins to compile source code, install dependencies, run custom commands, and create deployment artifact as per the instructions in the Build specification reference file.
+- During the build phase, CodeBuild copies the source-code artifact to Amazon EFS file system and maintains two different directories for current (green) and new (blue) deployments.
+- After successfully completing the build step, CodeDeploy deployment kicks in to conduct a Blue/Green deployment to a new Auto Scaling Group.
+- During the deployment phase, CodeDeploy mounts the EFS file system on new EC2 instances as per the CodeDeploy AppSpec file reference and conducts other deployment activities.
+- After successful deployment, a Lambda function triggers in order to store a deployment environment parameter in Systems Manager parameter store. The parameter stores the current EFS mount name that the application utilizes.
+- The AWS Lambda function updates the parameter value during every successful deployment with the current EFS location.
+
 ## Prerequisites
 
 - An [AWS account](https://signin.aws.amazon.com/signin?redirect_uri=https%3A%2F%2Fportal.aws.amazon.com%2Fbilling%2Fsignup%2Fresume&client_id=signup)
