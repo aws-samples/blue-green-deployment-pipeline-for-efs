@@ -35,7 +35,3 @@ See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more inform
 ## License
 
 This library is licensed under the MIT-0 License. See the LICENSE file.
-
-
-[AWS CDK](https://docs.aws.amazon.com/cdk/latest/guide/getting_started.html)
-
