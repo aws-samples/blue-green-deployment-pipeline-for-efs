@@ -12,11 +12,11 @@ This Repo contains AWS Cloudformation template and required scripts to configure
 
 - Clone the GitHub repo and store the files on your local machine. Utilize the commands below to clone the repo:
 
-      ```
+    ```
       mkdir -p ~/blue-green-sample/
       cd ~/blue-green-sample/
       git clone https://github.com/aws-samples/blue-green-deployment-pipeline-for-efs
-    ```
+	``` 
 
 Utilize the following steps to deploy the solution in your AWS account:
 
